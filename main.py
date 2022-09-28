@@ -2,22 +2,24 @@
 
 # Press Shift+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+import pathlib
+
 import torch
+import torchvision
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 from model import Model
 
+from matplotlib import pyplot as plt
 
 def print_hi(name):
     # Use a breakpoint in the code line below to debug your script.
     print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-
+def training():
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     # device(type='cuda', index=0)
     transform = transforms.Compose([transforms.ToTensor(),
@@ -35,7 +37,8 @@ if __name__ == '__main__':
     optimizer = torch.optim.Adam(model.parameters())
 
     n_epochs = 5
-    # model.load_state_dict(torch.load('model_parameter.pkl'))
+    if pathlib.Path('model_parameter/model_parameter.pkl').exists():
+        model.load_state_dict(torch.load('model_parameter/model_parameter.pkl'))
 
     for epoch in range(n_epochs):
         running_loss = 0.0
@@ -67,8 +70,41 @@ if __name__ == '__main__':
                                                                                             data_train),
                                                                                         100 * testing_correct / len(
                                                                                             data_test)))
-    torch.save(model.state_dict(), "model_parameter.pkl")
+    torch.save(model.state_dict(), "model_parameter/model_parameter.pkl")
 
-    print_hi('PyCharm')
+
+# Press the green button in the gutter to run the script.
+if __name__ == '__main__':
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    transform = transforms.Compose([transforms.ToTensor(),
+                                    transforms.Normalize(mean=[0.5], std=[0.5])])
+    data_test = datasets.MNIST(root="./data/", transform=transform, train=False)
+    data_loader_test = torch.utils.data.DataLoader(dataset=data_test,
+                                                   batch_size=4,
+                                                   shuffle=True)
+
+    model = Model()
+    model.to(device)
+
+    if pathlib.Path('model_parameter/model_parameter.pkl').exists():
+        model.load_state_dict(torch.load('model_parameter/model_parameter.pkl'))
+
+    X_test, y_test = next(iter(data_loader_test))
+    inputs = Variable(X_test.cuda())
+    pred = model(inputs)
+    _, pred = torch.max(pred, 1)
+
+    print("Predict Label is:", [i for i in pred.data])
+    print("Real Label is:", [i for i in y_test])
+
+    img = torchvision.utils.make_grid(X_test)
+    img = img.numpy().transpose(1, 2, 0)
+
+    std = [0.5, 0.5, 0.5]
+    mean = [0.5, 0.5, 0.5]
+    img = img * std + mean
+    plt.imshow(img)
+
+
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
